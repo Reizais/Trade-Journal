@@ -1,6 +1,136 @@
 import { useState, useEffect } from "react";
 
 const STORAGE_KEY = "options-journal-trades";
+const PIN_KEY = "options-journal-pin";
+const SESSION_KEY = "options-journal-session";
+
+function PinScreen({ onUnlock }) {
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [step, setStep] = useState("enter"); // enter | confirm | unlock
+  const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
+  const hasPin = !!localStorage.getItem(PIN_KEY);
+
+  useEffect(() => {
+    setStep(hasPin ? "unlock" : "enter");
+  }, [hasPin]);
+
+  function triggerShake() {
+    setShake(true);
+    setTimeout(() => setShake(false), 500);
+  }
+
+  function handleDigit(d) {
+    setError("");
+    if (step === "enter") {
+      const next = pin + d;
+      setPin(next);
+      if (next.length === 6) {
+        setTimeout(() => { setStep("confirm"); setPin(""); }, 200);
+      }
+    } else if (step === "confirm") {
+      const next = pin + d;
+      setPin(next);
+      if (next.length === 6) {
+        if (next === confirmPin || confirmPin === "") {
+          // first confirmation
+          if (confirmPin === "") {
+            setConfirmPin(next);
+            setPin("");
+          }
+        }
+        setTimeout(() => {
+          const saved = confirmPin || next;
+          if (confirmPin === "" ) {
+            setConfirmPin(next);
+            setPin("");
+          } else if (next === confirmPin) {
+            localStorage.setItem(PIN_KEY, confirmPin);
+            sessionStorage.setItem(SESSION_KEY, "1");
+            onUnlock();
+          } else {
+            setError("PINs don't match. Try again.");
+            triggerShake();
+            setPin("");
+            setConfirmPin("");
+            setStep("enter");
+          }
+        }, 200);
+      }
+    } else if (step === "unlock") {
+      const next = pin + d;
+      setPin(next);
+      if (next.length === 6) {
+        setTimeout(() => {
+          if (next === localStorage.getItem(PIN_KEY)) {
+            sessionStorage.setItem(SESSION_KEY, "1");
+            onUnlock();
+          } else {
+            setError("Incorrect PIN. Try again.");
+            triggerShake();
+            setPin("");
+          }
+        }, 200);
+      }
+    }
+  }
+
+  function handleDelete() {
+    setPin(p => p.slice(0, -1));
+    setError("");
+  }
+
+  const digits = [1,2,3,4,5,6,7,8,9,"",0,"⌫"];
+  const title = step === "unlock" ? "Enter your PIN" : step === "enter" ? "Set a 6-digit PIN" : "Confirm your PIN";
+  const subtitle = step === "unlock" ? "Enter your PIN to access your journal" : step === "enter" ? "Choose a PIN to protect your journal" : "Re-enter your PIN to confirm";
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-background-primary)", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ width: 320, textAlign: "center" }}>
+        {/* Logo */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: "#3266ad", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M3 3h18v18H3V3zm4 4v10M17 7v10M7 12h10" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 6 }}>Options Journal</div>
+          <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>{subtitle}</div>
+        </div>
+
+        {/* PIN dots */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 14, marginBottom: 32, animation: shake ? "shake 0.4s ease" : "none" }}>
+          {[0,1,2,3,4,5].map(i => (
+            <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${pin.length > i ? "#3266ad" : "var(--color-border-tertiary)"}`, background: pin.length > i ? "#3266ad" : "transparent", transition: "all 0.15s" }} />
+          ))}
+        </div>
+
+        {/* Error */}
+        {error && <div style={{ fontSize: 13, color: "#D4537E", marginBottom: 16, minHeight: 20 }}>{error}</div>}
+        {!error && <div style={{ minHeight: 36, marginBottom: 4 }}><span style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>{title}</span></div>}
+
+        {/* Keypad */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {digits.map((d, i) => (
+            <button key={i} onClick={() => d === "⌫" ? handleDelete() : d !== "" ? handleDigit(String(d)) : null}
+              style={{ height: 64, borderRadius: 12, border: "0.5px solid var(--color-border-tertiary)", background: d === "⌫" ? "var(--color-background-secondary)" : d === "" ? "transparent" : "var(--color-background-secondary)", fontSize: d === "⌫" ? 20 : 22, fontWeight: 500, cursor: d === "" ? "default" : "pointer", color: "var(--color-text-primary)", transition: "background 0.1s", outline: "none",
+                ...(d === "" ? { border: "none", background: "transparent" } : {})
+              }}>
+              {d}
+            </button>
+          ))}
+        </div>
+
+        {step === "unlock" && (
+          <button onClick={() => { if (window.confirm("This will reset your PIN and clear all data. Continue?")) { localStorage.clear(); window.location.reload(); } }}
+            style={{ marginTop: 24, fontSize: 12, color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+            Forgot PIN? Reset app
+          </button>
+        )}
+      </div>
+      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }`}</style>
+    </div>
+  );
+}
 
 const STRATEGIES = ["Strategy A — Lottery Ticket Long Call", "Strategy B — Wheel Light Short Put", "Other"];
 const STATUSES = ["Open", "Closed — Win", "Closed — Loss", "Closed — Breakeven", "Expired Worthless"];
@@ -70,12 +200,15 @@ function ChecklistItem({ label, checked, onChange }) {
 }
 
 export default function TradeJournal() {
+  const [unlocked, setUnlocked] = useState(!!sessionStorage.getItem(SESSION_KEY));
   const [trades, setTrades] = useState([]);
   const [view, setView] = useState("dashboard");
   const [editTrade, setEditTrade] = useState({ ...emptyTrade });
   const [filterStatus, setFilterStatus] = useState("All");
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
+
+  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
 
   useEffect(() => {
     try {
@@ -145,7 +278,7 @@ export default function TradeJournal() {
   if (!loaded) return <div style={{ padding: 32, color: "var(--color-text-secondary)", fontSize: 14 }}>Loading journal...</div>;
 
   const Nav = () => (
-    <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: 12, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
       {[["dashboard", "Dashboard"], ["log", "Trade Log"], ["keynotes", "Keynotes"], ["new", "+ New Trade"]].map(([v, label]) => (
         <button key={v} onClick={() => v === "new" ? openNew() : setView(v)} style={{
           padding: "6px 14px", borderRadius: 6, border: "none", fontSize: 13, cursor: "pointer",
@@ -154,6 +287,7 @@ export default function TradeJournal() {
           fontWeight: view === v ? 500 : 400,
         }}>{label}</button>
       ))}
+      <button onClick={() => { sessionStorage.removeItem(SESSION_KEY); setUnlocked(false); }} style={{ marginLeft: "auto", padding: "6px 12px", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary)", background: "transparent", fontSize: 12, cursor: "pointer", color: "var(--color-text-secondary)" }}>🔒 Lock</button>
     </div>
   );
 
