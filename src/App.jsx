@@ -128,7 +128,7 @@ export default function TradeJournal() {
   const winRate = closedTrades.length ? Math.round(wins.length / closedTrades.length * 100) : 0;
   const avgWin = wins.length ? wins.reduce((s, t) => s + parseFloat(t.realizedPnl), 0) / wins.length : 0;
   const avgLoss = losses.length ? losses.reduce((s, t) => s + parseFloat(t.realizedPnl), 0) / losses.length : 0;
-  const totalPremiumAtRisk = openTrades.reduce((s, t) => s + (parseFloat(t.premiumPaid) * (t.contracts || 1) * 100 || 0), 0);
+  const totalPremiumAtRisk = openTrades.reduce((s, t) => s + (parseFloat(t.premiumPaid) * (t.contracts || 1) || 0), 0);
   const filteredTrades = filterStatus === "All" ? trades : trades.filter(t => t.status === filterStatus);
 
   const inputStyle = {
@@ -187,7 +187,7 @@ export default function TradeJournal() {
     ];
 
     return (
-      <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 800 }}>
+      <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 800, margin: "0 auto" }}>
         <Nav />
         <div style={{ marginBottom: 20 }}>
           <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)" }}>Keynotes</h2>
@@ -221,7 +221,7 @@ export default function TradeJournal() {
 
   // DASHBOARD
   if (view === "dashboard") return (
-    <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 800 }}>
+    <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 800, margin: "0 auto" }}>
       <Nav />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px,1fr))", gap: 10, marginBottom: 20 }}>
         {[
@@ -260,7 +260,7 @@ export default function TradeJournal() {
               <span style={{ fontWeight: 500, fontSize: 14, minWidth: 50 }}>{t.symbol}</span>
               <span style={{ fontSize: 12, color: "var(--color-text-secondary)", flex: 1 }}>{t.direction} · {t.strike} · exp {t.expiry}</span>
               <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{t.strategy?.includes("A") ? "🎯 Strat A" : "💰 Strat B"}</span>
-              <span style={{ fontSize: 12, color: "#3266ad" }}>${((parseFloat(t.premiumPaid) || 0) * (t.contracts || 1) * 100).toFixed(0)} at risk</span>
+              <span style={{ fontSize: 12, color: "#3266ad" }}>${((parseFloat(t.premiumPaid) || 0) * (t.contracts || 1)).toFixed(0)} at risk</span>
             </div>
           ))}
         </div>}
@@ -281,7 +281,7 @@ export default function TradeJournal() {
 
   // TRADE LOG
   if (view === "log") return (
-    <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 900 }}>
+    <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 900, margin: "0 auto" }}>
       <Nav />
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
         {["All", "Open", "Closed — Win", "Closed — Loss", "Expired Worthless"].map(s => (
@@ -332,7 +332,7 @@ export default function TradeJournal() {
     const allChecked = t.checklist.every(Boolean);
 
     return (
-      <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 700 }}>
+      <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 700, margin: "0 auto" }}>
         <Nav />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500 }}>{isEdit ? `${t.symbol} — ${t.direction}` : "New Trade"}</h2>
@@ -384,15 +384,15 @@ export default function TradeJournal() {
             <input type="number" style={inputStyle} value={t.contracts} min={1} onChange={e => set("contracts", parseInt(e.target.value) || 1)} />
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Premium Paid (per share)</label>
-            <input type="number" style={inputStyle} value={t.premiumPaid} onChange={e => set("premiumPaid", e.target.value)} placeholder="e.g. 0.70" step="0.01" />
+            <label style={labelStyle}>Premium Paid (per contract $)</label>
+            <input type="number" style={inputStyle} value={t.premiumPaid} onChange={e => set("premiumPaid", e.target.value)} placeholder="e.g. 70" step="0.01" />
           </div>
         </div>
 
         {t.premiumPaid && (
           <div style={{ fontSize: 13, color: "#3266ad", marginBottom: 14, padding: "8px 12px", background: "var(--color-background-secondary)", borderRadius: 6 }}>
-            Total premium outlay: <strong>${(parseFloat(t.premiumPaid) * (t.contracts || 1) * 100).toFixed(0)}</strong>
-            {parseFloat(t.premiumPaid) * (t.contracts || 1) * 100 > 500 && <span style={{ color: "#D4537E", marginLeft: 8 }}>⚠ Exceeds $500 limit</span>}
+            Total premium outlay: <strong>${(parseFloat(t.premiumPaid) * (t.contracts || 1)).toFixed(0)}</strong>
+            {parseFloat(t.premiumPaid) * (t.contracts || 1) > 500 && <span style={{ color: "#D4537E", marginLeft: 8 }}>⚠ Exceeds $500 limit</span>}
           </div>
         )}
 
