@@ -4,134 +4,6 @@ const STORAGE_KEY = "options-journal-trades";
 const PIN_KEY = "options-journal-pin";
 const SESSION_KEY = "options-journal-session";
 
-function PinScreen({ onUnlock }) {
-  const [pin, setPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [step, setStep] = useState("enter"); // enter | confirm | unlock
-  const [error, setError] = useState("");
-  const [shake, setShake] = useState(false);
-  const hasPin = !!localStorage.getItem(PIN_KEY);
-
-  useEffect(() => {
-    setStep(hasPin ? "unlock" : "enter");
-  }, [hasPin]);
-
-  function triggerShake() {
-    setShake(true);
-    setTimeout(() => setShake(false), 500);
-  }
-
-  function handleDigit(d) {
-    setError("");
-    if (step === "enter") {
-      const next = pin + d;
-      setPin(next);
-      if (next.length === 6) {
-        setTimeout(() => { setStep("confirm"); setPin(""); }, 200);
-      }
-    } else if (step === "confirm") {
-      const next = pin + d;
-      setPin(next);
-      if (next.length === 6) {
-        if (next === confirmPin || confirmPin === "") {
-          // first confirmation
-          if (confirmPin === "") {
-            setConfirmPin(next);
-            setPin("");
-          }
-        }
-        setTimeout(() => {
-          const saved = confirmPin || next;
-          if (confirmPin === "" ) {
-            setConfirmPin(next);
-            setPin("");
-          } else if (next === confirmPin) {
-            localStorage.setItem(PIN_KEY, confirmPin);
-            sessionStorage.setItem(SESSION_KEY, "1");
-            onUnlock();
-          } else {
-            setError("PINs don't match. Try again.");
-            triggerShake();
-            setPin("");
-            setConfirmPin("");
-            setStep("enter");
-          }
-        }, 200);
-      }
-    } else if (step === "unlock") {
-      const next = pin + d;
-      setPin(next);
-      if (next.length === 6) {
-        setTimeout(() => {
-          if (next === localStorage.getItem(PIN_KEY)) {
-            sessionStorage.setItem(SESSION_KEY, "1");
-            onUnlock();
-          } else {
-            setError("Incorrect PIN. Try again.");
-            triggerShake();
-            setPin("");
-          }
-        }, 200);
-      }
-    }
-  }
-
-  function handleDelete() {
-    setPin(p => p.slice(0, -1));
-    setError("");
-  }
-
-  const digits = [1,2,3,4,5,6,7,8,9,"",0,"⌫"];
-  const title = step === "unlock" ? "Enter your PIN" : step === "enter" ? "Set a 6-digit PIN" : "Confirm your PIN";
-  const subtitle = step === "unlock" ? "Enter your PIN to access your journal" : step === "enter" ? "Choose a PIN to protect your journal" : "Re-enter your PIN to confirm";
-
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-background-primary)", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ width: 320, textAlign: "center" }}>
-        {/* Logo */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: "#3266ad", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M3 3h18v18H3V3zm4 4v10M17 7v10M7 12h10" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 6 }}>Options Journal</div>
-          <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>{subtitle}</div>
-        </div>
-
-        {/* PIN dots */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 14, marginBottom: 32, animation: shake ? "shake 0.4s ease" : "none" }}>
-          {[0,1,2,3,4,5].map(i => (
-            <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${pin.length > i ? "#3266ad" : "var(--color-border-tertiary)"}`, background: pin.length > i ? "#3266ad" : "transparent", transition: "all 0.15s" }} />
-          ))}
-        </div>
-
-        {/* Error */}
-        {error && <div style={{ fontSize: 13, color: "#D4537E", marginBottom: 16, minHeight: 20 }}>{error}</div>}
-        {!error && <div style={{ minHeight: 36, marginBottom: 4 }}><span style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>{title}</span></div>}
-
-        {/* Keypad */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {digits.map((d, i) => (
-            <button key={i} onClick={() => d === "⌫" ? handleDelete() : d !== "" ? handleDigit(String(d)) : null}
-              style={{ height: 64, borderRadius: 12, border: "0.5px solid var(--color-border-tertiary)", background: d === "⌫" ? "var(--color-background-secondary)" : d === "" ? "transparent" : "var(--color-background-secondary)", fontSize: d === "⌫" ? 20 : 22, fontWeight: 500, cursor: d === "" ? "default" : "pointer", color: "var(--color-text-primary)", transition: "background 0.1s", outline: "none",
-                ...(d === "" ? { border: "none", background: "transparent" } : {})
-              }}>
-              {d}
-            </button>
-          ))}
-        </div>
-
-        {step === "unlock" && (
-          <button onClick={() => { if (window.confirm("This will reset your PIN and clear all data. Continue?")) { localStorage.clear(); window.location.reload(); } }}
-            style={{ marginTop: 24, fontSize: 12, color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-            Forgot PIN? Reset app
-          </button>
-        )}
-      </div>
-      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }`}</style>
-    </div>
-  );
-}
-
 const STRATEGIES = ["Strategy A — Lottery Ticket Long Call", "Strategy B — Wheel Light Short Put", "Other"];
 const STATUSES = ["Open", "Closed — Win", "Closed — Loss", "Closed — Breakeven", "Expired Worthless"];
 const CHECKLIST_ITEMS = [
@@ -142,28 +14,15 @@ const CHECKLIST_ITEMS = [
 ];
 
 const emptyTrade = {
-  id: null,
-  date: new Date().toISOString().slice(0, 10),
-  symbol: "",
-  strategy: STRATEGIES[0],
-  direction: "Long Call",
-  strike: "",
-  expiry: "",
-  contracts: 1,
-  premiumPaid: "",
-  premiumReceived: "",
-  thesis: "",
-  checklist: [false, false, false, false],
-  status: "Open",
-  closeDate: "",
-  closePrice: "",
-  realizedPnl: "",
-  notes: "",
+  id: null, date: new Date().toISOString().slice(0, 10), symbol: "",
+  strategy: STRATEGIES[0], direction: "Long Call", strike: "", expiry: "",
+  contracts: 1, premiumPaid: "", premiumReceived: "", thesis: "",
+  checklist: [false, false, false, false], status: "Open",
+  closeDate: "", closePrice: "", realizedPnl: "", notes: "",
 };
 
 function calcPnl(trade) {
-  if (trade.realizedPnl !== "" && trade.realizedPnl !== null) return parseFloat(trade.realizedPnl);
-  return null;
+  return trade.realizedPnl !== "" && trade.realizedPnl !== null ? parseFloat(trade.realizedPnl) : null;
 }
 
 function PnlBadge({ value }) {
@@ -173,24 +32,14 @@ function PnlBadge({ value }) {
 }
 
 function StatusDot({ status }) {
-  const colors = {
-    "Open": "#3266ad",
-    "Closed — Win": "#1D9E75",
-    "Closed — Loss": "#D4537E",
-    "Closed — Breakeven": "#888",
-    "Expired Worthless": "#EF9F27",
-  };
+  const colors = { "Open": "#3266ad", "Closed — Win": "#1D9E75", "Closed — Loss": "#D4537E", "Closed — Breakeven": "#888", "Expired Worthless": "#EF9F27" };
   return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: colors[status] || "#888", marginRight: 6, flexShrink: 0 }} />;
 }
 
 function ChecklistItem({ label, checked, onChange }) {
   return (
     <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", fontSize: 13, color: checked ? "#1D9E75" : "var(--color-text-secondary)", marginBottom: 6, lineHeight: 1.4 }}>
-      <span style={{
-        width: 16, height: 16, border: `1.5px solid ${checked ? "#1D9E75" : "#aaa"}`, borderRadius: 3,
-        display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
-        background: checked ? "#1D9E75" : "transparent", transition: "all 0.15s"
-      }}>
+      <span style={{ width: 16, height: 16, border: `1.5px solid ${checked ? "#1D9E75" : "#aaa"}`, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1, background: checked ? "#1D9E75" : "transparent", transition: "all 0.15s" }}>
         {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
       </span>
       {label}
@@ -199,8 +48,106 @@ function ChecklistItem({ label, checked, onChange }) {
   );
 }
 
+function PinScreen() {
+  const hasPin = !!localStorage.getItem(PIN_KEY);
+  const [step, setStep] = useState(hasPin ? "unlock" : "enter");
+  const [pin, setPin] = useState("");
+  const [firstPin, setFirstPin] = useState("");
+  const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
+
+  function triggerShake() {
+    setShake(true);
+    setTimeout(() => setShake(false), 500);
+  }
+
+  function handleDigit(d) {
+    if (pin.length >= 6) return;
+    setError("");
+    const next = pin + d;
+    setPin(next);
+    if (next.length === 6) {
+      setTimeout(() => {
+        if (step === "unlock") {
+          if (next === localStorage.getItem(PIN_KEY)) {
+            sessionStorage.setItem(SESSION_KEY, "1");
+            window.location.reload();
+          } else {
+            setError("Incorrect PIN. Try again.");
+            triggerShake();
+            setPin("");
+          }
+        } else if (step === "enter") {
+          setFirstPin(next);
+          setPin("");
+          setStep("confirm");
+        } else if (step === "confirm") {
+          if (next === firstPin) {
+            localStorage.setItem(PIN_KEY, next);
+            sessionStorage.setItem(SESSION_KEY, "1");
+            window.location.reload();
+          } else {
+            setError("PINs don't match. Start over.");
+            triggerShake();
+            setPin("");
+            setFirstPin("");
+            setStep("enter");
+          }
+        }
+      }, 150);
+    }
+  }
+
+  function handleDelete() {
+    setError("");
+    setPin(p => p.slice(0, -1));
+  }
+
+  const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "⌫"];
+  const titles = { unlock: "Enter your PIN", enter: "Set a 6-digit PIN", confirm: "Confirm your PIN" };
+  const subtitles = { unlock: "Enter your PIN to access your journal", enter: "Choose a PIN to protect your journal", confirm: "Re-enter your PIN to confirm" };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-background-primary)", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ width: 320, textAlign: "center" }}>
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: "#3266ad", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M3 3h18v18H3V3zm4 4v10M17 7v10M7 12h10" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 6 }}>Options Journal</div>
+          <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>{subtitles[step]}</div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 14, marginBottom: 12, animation: shake ? "shake 0.4s ease" : "none" }}>
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${pin.length > i ? "#3266ad" : "var(--color-border-tertiary)"}`, background: pin.length > i ? "#3266ad" : "transparent", transition: "all 0.15s" }} />
+          ))}
+        </div>
+        <div style={{ height: 32, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+          {error
+            ? <span style={{ fontSize: 13, color: "#D4537E" }}>{error}</span>
+            : <span style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>{titles[step]}</span>}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {digits.map((d, i) => (
+            <button key={i} onClick={() => d === "⌫" ? handleDelete() : d !== "" ? handleDigit(String(d)) : null}
+              style={{ height: 64, borderRadius: 12, fontSize: d === "⌫" ? 20 : 22, fontWeight: 500, cursor: d === "" ? "default" : "pointer", color: "var(--color-text-primary)", outline: "none", transition: "background 0.1s", ...(d === "" ? { border: "none", background: "transparent" } : { border: "0.5px solid var(--color-border-tertiary)", background: "var(--color-background-secondary)" }) }}>
+              {d}
+            </button>
+          ))}
+        </div>
+        {step === "unlock" && (
+          <button onClick={() => { if (window.confirm("This will reset your PIN and clear all data. Continue?")) { localStorage.clear(); sessionStorage.clear(); window.location.reload(); } }}
+            style={{ marginTop: 24, fontSize: 12, color: "var(--color-text-secondary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+            Forgot PIN? Reset app
+          </button>
+        )}
+      </div>
+      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }`}</style>
+    </div>
+  );
+}
+
 export default function TradeJournal() {
-  const [unlocked, setUnlocked] = useState(!!sessionStorage.getItem(SESSION_KEY));
   const [trades, setTrades] = useState([]);
   const [view, setView] = useState("dashboard");
   const [editTrade, setEditTrade] = useState({ ...emptyTrade });
@@ -208,23 +155,22 @@ export default function TradeJournal() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
 
-  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
+  const isUnlocked = !!sessionStorage.getItem(SESSION_KEY);
 
   useEffect(() => {
+    if (!isUnlocked) return;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setTrades(JSON.parse(saved));
-    } catch (e) { /* no data */ }
+    } catch (e) {}
     setLoaded(true);
-  }, []);
+  }, [isUnlocked]);
+
+  if (!isUnlocked) return <PinScreen />;
 
   function saveTrades(newTrades) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newTrades));
-      setTrades(newTrades);
-    } catch (e) {
-      setError("Failed to save. Please try again.");
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newTrades)); setTrades(newTrades); }
+    catch (e) { setError("Failed to save. Please try again."); }
   }
 
   function openNew() {
@@ -240,9 +186,7 @@ export default function TradeJournal() {
   function submitTrade() {
     if (!editTrade.symbol) { setError("Symbol is required."); return; }
     setError(null);
-    const updated = view === "new"
-      ? [...trades, editTrade]
-      : trades.map(t => t.id === editTrade.id ? editTrade : t);
+    const updated = view === "new" ? [...trades, editTrade] : trades.map(t => t.id === editTrade.id ? editTrade : t);
     saveTrades(updated);
     setView("log");
   }
@@ -251,6 +195,11 @@ export default function TradeJournal() {
     if (!window.confirm("Delete this trade? This cannot be undone.")) return;
     saveTrades(trades.filter(t => t.id !== id));
     setView("log");
+  }
+
+  function lockApp() {
+    sessionStorage.removeItem(SESSION_KEY);
+    window.location.reload();
   }
 
   const openTrades = trades.filter(t => t.status === "Open");
@@ -264,11 +213,7 @@ export default function TradeJournal() {
   const totalPremiumAtRisk = openTrades.reduce((s, t) => s + (parseFloat(t.premiumPaid) * (t.contracts || 1) || 0), 0);
   const filteredTrades = filterStatus === "All" ? trades : trades.filter(t => t.status === filterStatus);
 
-  const inputStyle = {
-    width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 6,
-    border: "0.5px solid var(--color-border-tertiary)", background: "var(--color-background-secondary)",
-    color: "var(--color-text-primary)", outline: "none",
-  };
+  const inputStyle = { width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 6, border: "0.5px solid var(--color-border-tertiary)", background: "var(--color-background-secondary)", color: "var(--color-text-primary)", outline: "none" };
   const labelStyle = { fontSize: 11, color: "var(--color-text-secondary)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: "0.05em" };
   const fieldStyle = { marginBottom: 14 };
   const btnPrimary = { padding: "8px 18px", borderRadius: 6, border: "none", background: "#3266ad", color: "#fff", fontSize: 13, fontWeight: 500, cursor: "pointer" };
@@ -280,46 +225,19 @@ export default function TradeJournal() {
   const Nav = () => (
     <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
       {[["dashboard", "Dashboard"], ["log", "Trade Log"], ["keynotes", "Keynotes"], ["new", "+ New Trade"]].map(([v, label]) => (
-        <button key={v} onClick={() => v === "new" ? openNew() : setView(v)} style={{
-          padding: "6px 14px", borderRadius: 6, border: "none", fontSize: 13, cursor: "pointer",
-          background: view === v ? "#3266ad" : "transparent",
-          color: view === v ? "#fff" : "var(--color-text-secondary)",
-          fontWeight: view === v ? 500 : 400,
-        }}>{label}</button>
+        <button key={v} onClick={() => v === "new" ? openNew() : setView(v)} style={{ padding: "6px 14px", borderRadius: 6, border: "none", fontSize: 13, cursor: "pointer", background: view === v ? "#3266ad" : "transparent", color: view === v ? "#fff" : "var(--color-text-secondary)", fontWeight: view === v ? 500 : 400 }}>{label}</button>
       ))}
-      <button onClick={() => { sessionStorage.removeItem(SESSION_KEY); setUnlocked(false); }} style={{ marginLeft: "auto", padding: "6px 12px", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary)", background: "transparent", fontSize: 12, cursor: "pointer", color: "var(--color-text-secondary)" }}>🔒 Lock</button>
+      <button onClick={lockApp} style={{ marginLeft: "auto", padding: "6px 12px", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary)", background: "transparent", fontSize: 12, cursor: "pointer", color: "var(--color-text-secondary)" }}>🔒 Lock</button>
     </div>
   );
 
-  // KEYNOTES
   if (view === "keynotes") {
     const keynotes = [
-      {
-        number: "01", title: "Cap Your Premium Outlay", color: "#3266ad", bg: "#E6F1FB",
-        rule: "Never pay more than $500 premium for a single long option position.",
-        body: "Your trade history is conclusive — every trade under $400 premium outlay (RBRK, ZS early entries) consistently worked. Every trade over $1,500 premium (CRM $2,645, NVDA $2,000, FTNT) consistently lost. Cheap options with asymmetric payoff are your edge. Yes, they expire worthless more often — but when they hit, they more than compensate.",
-        bullets: ["Max premium per single options trade: $500–$800 (~0.3–0.4% of NAV)", "Prefer OTM options with 4–8 weeks to expiry for maximum asymmetry", "If you can't find a position under $500, don't force the trade"],
-      },
-      {
-        number: "02", title: "Position Sizing: The 1% Rule", color: "#1D9E75", bg: "#EAF3DE",
-        rule: "Max 3 open directional longs. Max $4,000 total premium at risk at any time.",
-        body: "Your February cluster loss (5 losing positions simultaneously) was the most damaging event of the year — not because any single trade was oversized, but because they all moved against you at the same time. Correlation risk across time is as dangerous as concentration across tickers.",
-        bullets: ["Max premium per trade: $500–$800 (~0.3–0.4% of NAV at $194k)", "Max total options premium at risk at any time: $3,000–$4,000 (~1.5–2% of NAV)", "Max 3 open directional long call positions simultaneously", "If a new trade would breach any of these, close an existing position first"],
-      },
-      {
-        number: "03", title: "Two Strategies Only", color: "#7F77DD", bg: "#EEEDFE",
-        rule: "Strategy A: Cheap OTM long calls. Strategy B: Short puts on stocks you want to own.",
-        body: "Your win patterns cluster tightly around two approaches. Everything else — expensive ATM calls, vertical spreads, complex structures — has been a net drain. Discipline means saying no to trades that don't fit one of these two boxes, even when they feel compelling.",
-        bullets: ["Strategy A (Lottery Ticket): Buy OTM calls at $50–$300 premium, 4–8 weeks out. Target 3x–5x. Exit rule: sell at 3x or cut at 50% loss.", "Strategy B (Wheel Light): Sell cash-secured puts 5–10% OTM, 3–5 weeks out. Exit rule: buy back at 50% profit, don't hold to expiry.", "Best Strategy A candidates: HOOD, RBRK, ZS, UBER", "Best Strategy B candidates: SE, SCHW, WFC, BAC, NEM, LMND"],
-      },
-      {
-        number: "04", title: "The Pre-Trade Checklist", color: "#EF9F27", bg: "#FAEEDA",
-        rule: "All 4 must be Yes. If any answer is No, don't trade.",
-        body: "Every losing trade this year could have been filtered by at least one of these four questions. The checklist isn't bureaucracy — it's the distilled lesson of your actual P&L. The discipline to not trade when a check fails is where the edge lives.",
-        bullets: ["Is my premium outlay under $500?", "Do I have fewer than 3 open directional longs?", "Is my total options premium at risk under $4,000?", "For short puts: am I happy owning this stock at the strike price?"],
-      },
+      { number: "01", title: "Cap Your Premium Outlay", color: "#3266ad", bg: "#E6F1FB", rule: "Never pay more than $500 premium for a single long option position.", body: "Your trade history is conclusive — every trade under $400 premium outlay (RBRK, ZS early entries) consistently worked. Every trade over $1,500 premium (CRM $2,645, NVDA $2,000, FTNT) consistently lost. Cheap options with asymmetric payoff are your edge. Yes, they expire worthless more often — but when they hit, they more than compensate.", bullets: ["Max premium per single options trade: $500–$800 (~0.3–0.4% of NAV)", "Prefer OTM options with 4–8 weeks to expiry for maximum asymmetry", "If you can't find a position under $500, don't force the trade"] },
+      { number: "02", title: "Position Sizing: The 1% Rule", color: "#1D9E75", bg: "#EAF3DE", rule: "Max 3 open directional longs. Max $4,000 total premium at risk at any time.", body: "Your February cluster loss (5 losing positions simultaneously) was the most damaging event of the year — not because any single trade was oversized, but because they all moved against you at the same time. Correlation risk across time is as dangerous as concentration across tickers.", bullets: ["Max premium per trade: $500–$800 (~0.3–0.4% of NAV at $194k)", "Max total options premium at risk at any time: $3,000–$4,000 (~1.5–2% of NAV)", "Max 3 open directional long call positions simultaneously", "If a new trade would breach any of these, close an existing position first"] },
+      { number: "03", title: "Two Strategies Only", color: "#7F77DD", bg: "#EEEDFE", rule: "Strategy A: Cheap OTM long calls. Strategy B: Short puts on stocks you want to own.", body: "Your win patterns cluster tightly around two approaches. Everything else — expensive ATM calls, vertical spreads, complex structures — has been a net drain. Discipline means saying no to trades that don't fit one of these two boxes, even when they feel compelling.", bullets: ["Strategy A (Lottery Ticket): Buy OTM calls at $50–$300 premium, 4–8 weeks out. Target 3x–5x. Exit rule: sell at 3x or cut at 50% loss.", "Strategy B (Wheel Light): Sell cash-secured puts 5–10% OTM, 3–5 weeks out. Exit rule: buy back at 50% profit, don't hold to expiry.", "Best Strategy A candidates: HOOD, RBRK, ZS, UBER", "Best Strategy B candidates: SE, SCHW, WFC, BAC, NEM, LMND"] },
+      { number: "04", title: "The Pre-Trade Checklist", color: "#EF9F27", bg: "#FAEEDA", rule: "All 4 must be Yes. If any answer is No, don't trade.", body: "Every losing trade this year could have been filtered by at least one of these four questions. The checklist isn't bureaucracy — it's the distilled lesson of your actual P&L. The discipline to not trade when a check fails is where the edge lives.", bullets: ["Is my premium outlay under $500?", "Do I have fewer than 3 open directional longs?", "Is my total options premium at risk under $4,000?", "For short puts: am I happy owning this stock at the strike price?"] },
     ];
-
     return (
       <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 800, margin: "0 auto" }}>
         <Nav />
@@ -353,7 +271,6 @@ export default function TradeJournal() {
     );
   }
 
-  // DASHBOARD
   if (view === "dashboard") return (
     <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 800, margin: "0 auto" }}>
       <Nav />
@@ -372,33 +289,20 @@ export default function TradeJournal() {
           </div>
         ))}
       </div>
-
-      {totalPremiumAtRisk > 4000 && (
-        <div style={{ background: "#FBEAF0", borderLeft: "3px solid #D4537E", padding: "10px 14px", borderRadius: "0 6px 6px 0", marginBottom: 14, fontSize: 13, color: "#72243E" }}>
-          ⚠ <strong>Premium at risk exceeds $4,000.</strong> You have ${totalPremiumAtRisk.toFixed(0)} in open long premium — consider closing or trimming.
-        </div>
-      )}
-      {openTrades.filter(t => t.direction === "Long Call" || t.strategy?.includes("A")).length >= 3 && (
-        <div style={{ background: "#FBEAF0", borderLeft: "3px solid #D4537E", padding: "10px 14px", borderRadius: "0 6px 6px 0", marginBottom: 14, fontSize: 13, color: "#72243E" }}>
-          ⚠ <strong>3 or more directional long calls open.</strong> Max concurrent directional longs reached.
-        </div>
-      )}
-
+      {totalPremiumAtRisk > 4000 && <div style={{ background: "#FBEAF0", borderLeft: "3px solid #D4537E", padding: "10px 14px", borderRadius: "0 6px 6px 0", marginBottom: 14, fontSize: 13, color: "#72243E" }}>⚠ <strong>Premium at risk exceeds $4,000.</strong> Consider closing or trimming a position.</div>}
+      {openTrades.filter(t => t.direction === "Long Call" || t.strategy?.includes("A")).length >= 3 && <div style={{ background: "#FBEAF0", borderLeft: "3px solid #D4537E", padding: "10px 14px", borderRadius: "0 6px 6px 0", marginBottom: 14, fontSize: 13, color: "#72243E" }}>⚠ <strong>3+ directional long calls open.</strong> Max concurrent directional longs reached.</div>}
       <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Open Positions</div>
       {openTrades.length === 0
         ? <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: 20 }}>No open trades. <button onClick={openNew} style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12 }}>Add one</button></div>
-        : <div style={{ marginBottom: 20 }}>
-          {openTrades.map(t => (
-            <div key={t.id} onClick={() => openDetail(t.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: "0.5px solid var(--color-border-tertiary)", marginBottom: 8, cursor: "pointer", background: "var(--color-background-primary)" }}>
-              <StatusDot status={t.status} />
-              <span style={{ fontWeight: 500, fontSize: 14, minWidth: 50 }}>{t.symbol}</span>
-              <span style={{ fontSize: 12, color: "var(--color-text-secondary)", flex: 1 }}>{t.direction} · {t.strike} · exp {t.expiry}</span>
-              <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{t.strategy?.includes("A") ? "🎯 Strat A" : "💰 Strat B"}</span>
-              <span style={{ fontSize: 12, color: "#3266ad" }}>${((parseFloat(t.premiumPaid) || 0) * (t.contracts || 1)).toFixed(0)} at risk</span>
-            </div>
-          ))}
-        </div>}
-
+        : <div style={{ marginBottom: 20 }}>{openTrades.map(t => (
+          <div key={t.id} onClick={() => openDetail(t.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: "0.5px solid var(--color-border-tertiary)", marginBottom: 8, cursor: "pointer", background: "var(--color-background-primary)" }}>
+            <StatusDot status={t.status} />
+            <span style={{ fontWeight: 500, fontSize: 14, minWidth: 50 }}>{t.symbol}</span>
+            <span style={{ fontSize: 12, color: "var(--color-text-secondary)", flex: 1 }}>{t.direction} · {t.strike} · exp {t.expiry}</span>
+            <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{t.strategy?.includes("A") ? "🎯 Strat A" : "💰 Strat B"}</span>
+            <span style={{ fontSize: 12, color: "#3266ad" }}>${((parseFloat(t.premiumPaid) || 0) * (t.contracts || 1)).toFixed(0)} at risk</span>
+          </div>
+        ))}</div>}
       {closedTrades.length > 0 && <>
         <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Recent Closed</div>
         {closedTrades.slice(-5).reverse().map(t => (
@@ -413,58 +317,45 @@ export default function TradeJournal() {
     </div>
   );
 
-  // TRADE LOG
   if (view === "log") return (
     <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 900, margin: "0 auto" }}>
       <Nav />
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
         {["All", "Open", "Closed — Win", "Closed — Loss", "Expired Worthless"].map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)} style={{
-            padding: "4px 12px", borderRadius: 20, border: "0.5px solid var(--color-border-tertiary)", fontSize: 12,
-            background: filterStatus === s ? "#3266ad" : "transparent",
-            color: filterStatus === s ? "#fff" : "var(--color-text-secondary)", cursor: "pointer",
-          }}>{s}</button>
+          <button key={s} onClick={() => setFilterStatus(s)} style={{ padding: "4px 12px", borderRadius: 20, border: "0.5px solid var(--color-border-tertiary)", fontSize: 12, background: filterStatus === s ? "#3266ad" : "transparent", color: filterStatus === s ? "#fff" : "var(--color-text-secondary)", cursor: "pointer" }}>{s}</button>
         ))}
       </div>
       {filteredTrades.length === 0
         ? <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>No trades found. <button onClick={openNew} style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12 }}>Add one</button></div>
         : <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr>{["Date", "Symbol", "Direction", "Strike", "Expiry", "Strategy", "Status", "P&L", ""].map(h => (
-                <th key={h} style={{ textAlign: "left", padding: "6px 10px", color: "var(--color-text-secondary)", fontWeight: 500, borderBottom: "0.5px solid var(--color-border-tertiary)", whiteSpace: "nowrap" }}>{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {filteredTrades.slice().reverse().map(t => (
-                <tr key={t.id} style={{ cursor: "pointer" }} onClick={() => openDetail(t.id)}>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", whiteSpace: "nowrap" }}>{t.date}</td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", fontWeight: 500 }}>{t.symbol}</td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{t.direction}</td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{t.strike || "—"}</td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{t.expiry || "—"}</td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", fontSize: 11, color: "var(--color-text-secondary)" }}>{t.strategy?.includes("A") ? "Strat A" : t.strategy?.includes("B") ? "Strat B" : "Other"}</td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-                    <span style={{ display: "flex", alignItems: "center" }}><StatusDot status={t.status} /><span style={{ fontSize: 12 }}>{t.status}</span></span>
-                  </td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}><PnlBadge value={calcPnl(t)} /></td>
-                  <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", color: "#3266ad", fontSize: 12 }}>View →</td>
-                </tr>
-              ))}
-            </tbody>
+            <thead><tr>{["Date", "Symbol", "Direction", "Strike", "Expiry", "Strategy", "Status", "P&L", ""].map(h => (
+              <th key={h} style={{ textAlign: "left", padding: "6px 10px", color: "var(--color-text-secondary)", fontWeight: 500, borderBottom: "0.5px solid var(--color-border-tertiary)", whiteSpace: "nowrap" }}>{h}</th>
+            ))}</tr></thead>
+            <tbody>{filteredTrades.slice().reverse().map(t => (
+              <tr key={t.id} style={{ cursor: "pointer" }} onClick={() => openDetail(t.id)}>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", whiteSpace: "nowrap" }}>{t.date}</td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", fontWeight: 500 }}>{t.symbol}</td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{t.direction}</td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{t.strike || "—"}</td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{t.expiry || "—"}</td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", fontSize: 11, color: "var(--color-text-secondary)" }}>{t.strategy?.includes("A") ? "Strat A" : t.strategy?.includes("B") ? "Strat B" : "Other"}</td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}><span style={{ display: "flex", alignItems: "center" }}><StatusDot status={t.status} /><span style={{ fontSize: 12 }}>{t.status}</span></span></td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}><PnlBadge value={calcPnl(t)} /></td>
+                <td style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--color-border-tertiary)", color: "#3266ad", fontSize: 12 }}>View →</td>
+              </tr>
+            ))}</tbody>
           </table>
         </div>}
     </div>
   );
 
-  // NEW / EDIT FORM
   if (view === "new" || view === "detail") {
     const isEdit = view === "detail";
     const t = editTrade;
     const set = (k, v) => setEditTrade(prev => ({ ...prev, [k]: v }));
     const setCheck = (i, v) => setEditTrade(prev => { const c = [...prev.checklist]; c[i] = v; return { ...prev, checklist: c }; });
     const allChecked = t.checklist.every(Boolean);
-
     return (
       <div style={{ padding: "20px 16px", fontFamily: "system-ui, sans-serif", maxWidth: 700, margin: "0 auto" }}>
         <Nav />
@@ -472,94 +363,39 @@ export default function TradeJournal() {
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500 }}>{isEdit ? `${t.symbol} — ${t.direction}` : "New Trade"}</h2>
           {isEdit && <button onClick={() => deleteTrade(t.id)} style={btnDanger}>Delete</button>}
         </div>
-
         {error && <div style={{ background: "#FBEAF0", border: "0.5px solid #D4537E", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#D4537E", marginBottom: 14 }}>{error}</div>}
-
         <div style={{ background: "var(--color-background-secondary)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-secondary)", marginBottom: 10 }}>Pre-Trade Checklist</div>
-          {CHECKLIST_ITEMS.map((item, i) => (
-            <ChecklistItem key={i} label={item} checked={t.checklist[i]} onChange={e => setCheck(i, e.target.checked)} />
-          ))}
+          {CHECKLIST_ITEMS.map((item, i) => <ChecklistItem key={i} label={item} checked={t.checklist[i]} onChange={e => setCheck(i, e.target.checked)} />)}
           {!allChecked && <div style={{ fontSize: 12, color: "#EF9F27", marginTop: 6 }}>⚠ Complete all checklist items before entering this trade.</div>}
           {allChecked && <div style={{ fontSize: 12, color: "#1D9E75", marginTop: 6 }}>✓ All checks passed — trade is eligible.</div>}
         </div>
-
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Symbol *</label>
-            <input style={inputStyle} value={t.symbol} onChange={e => set("symbol", e.target.value.toUpperCase())} placeholder="e.g. RBRK" />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Entry Date</label>
-            <input type="date" style={inputStyle} value={t.date} onChange={e => set("date", e.target.value)} />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Strategy</label>
-            <select style={inputStyle} value={t.strategy} onChange={e => set("strategy", e.target.value)}>
-              {STRATEGIES.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Direction</label>
-            <select style={inputStyle} value={t.direction} onChange={e => set("direction", e.target.value)}>
-              {["Long Call", "Short Put", "Long Put", "Short Call", "Call Spread", "Put Spread"].map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Strike Price</label>
-            <input style={inputStyle} value={t.strike} onChange={e => set("strike", e.target.value)} placeholder="e.g. 85" />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Expiry Date</label>
-            <input type="date" style={inputStyle} value={t.expiry} onChange={e => set("expiry", e.target.value)} />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Contracts</label>
-            <input type="number" style={inputStyle} value={t.contracts} min={1} onChange={e => set("contracts", parseInt(e.target.value) || 1)} />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Premium Paid (per contract $)</label>
-            <input type="number" style={inputStyle} value={t.premiumPaid} onChange={e => set("premiumPaid", e.target.value)} placeholder="e.g. 70" step="0.01" />
-          </div>
+          <div style={fieldStyle}><label style={labelStyle}>Symbol *</label><input style={inputStyle} value={t.symbol} onChange={e => set("symbol", e.target.value.toUpperCase())} placeholder="e.g. RBRK" /></div>
+          <div style={fieldStyle}><label style={labelStyle}>Entry Date</label><input type="date" style={inputStyle} value={t.date} onChange={e => set("date", e.target.value)} /></div>
+          <div style={fieldStyle}><label style={labelStyle}>Strategy</label><select style={inputStyle} value={t.strategy} onChange={e => set("strategy", e.target.value)}>{STRATEGIES.map(s => <option key={s}>{s}</option>)}</select></div>
+          <div style={fieldStyle}><label style={labelStyle}>Direction</label><select style={inputStyle} value={t.direction} onChange={e => set("direction", e.target.value)}>{["Long Call", "Short Put", "Long Put", "Short Call", "Call Spread", "Put Spread"].map(d => <option key={d}>{d}</option>)}</select></div>
+          <div style={fieldStyle}><label style={labelStyle}>Strike Price</label><input style={inputStyle} value={t.strike} onChange={e => set("strike", e.target.value)} placeholder="e.g. 85" /></div>
+          <div style={fieldStyle}><label style={labelStyle}>Expiry Date</label><input type="date" style={inputStyle} value={t.expiry} onChange={e => set("expiry", e.target.value)} /></div>
+          <div style={fieldStyle}><label style={labelStyle}>Contracts</label><input type="number" style={inputStyle} value={t.contracts} min={1} onChange={e => set("contracts", parseInt(e.target.value) || 1)} /></div>
+          <div style={fieldStyle}><label style={labelStyle}>Premium Paid (per share)</label><input type="number" style={inputStyle} value={t.premiumPaid} onChange={e => set("premiumPaid", e.target.value)} placeholder="e.g. 0.70" step="0.01" /></div>
         </div>
-
         {t.premiumPaid && (
           <div style={{ fontSize: 13, color: "#3266ad", marginBottom: 14, padding: "8px 12px", background: "var(--color-background-secondary)", borderRadius: 6 }}>
-            Total premium outlay: <strong>${(parseFloat(t.premiumPaid) * (t.contracts || 1)).toFixed(0)}</strong>
-            {parseFloat(t.premiumPaid) * (t.contracts || 1) > 500 && <span style={{ color: "#D4537E", marginLeft: 8 }}>⚠ Exceeds $500 limit</span>}
+            Total premium outlay: <strong>${(parseFloat(t.premiumPaid) * (t.contracts || 1) * 100).toFixed(0)}</strong>
+            {parseFloat(t.premiumPaid) * (t.contracts || 1) * 100 > 500 && <span style={{ color: "#D4537E", marginLeft: 8 }}>⚠ Exceeds $500 limit</span>}
           </div>
         )}
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Trade Thesis</label>
-          <textarea style={{ ...inputStyle, height: 80, resize: "vertical" }} value={t.thesis} onChange={e => set("thesis", e.target.value)} placeholder="e.g. RBRK breaking out above 50-day MA, earnings catalyst in 3 weeks..." />
-        </div>
-
+        <div style={fieldStyle}><label style={labelStyle}>Trade Thesis</label><textarea style={{ ...inputStyle, height: 80, resize: "vertical" }} value={t.thesis} onChange={e => set("thesis", e.target.value)} placeholder="e.g. RBRK breaking out above 50-day MA, earnings catalyst in 3 weeks..." /></div>
         <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14, marginTop: 4, marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-secondary)", marginBottom: 12 }}>Close Details</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Status</label>
-              <select style={inputStyle} value={t.status} onChange={e => set("status", e.target.value)}>
-                {STATUSES.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Close Date</label>
-              <input type="date" style={inputStyle} value={t.closeDate} onChange={e => set("closeDate", e.target.value)} />
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Realised P&L ($)</label>
-              <input type="number" style={inputStyle} value={t.realizedPnl} onChange={e => set("realizedPnl", e.target.value)} placeholder="e.g. 268" step="0.01" />
-            </div>
+            <div style={fieldStyle}><label style={labelStyle}>Status</label><select style={inputStyle} value={t.status} onChange={e => set("status", e.target.value)}>{STATUSES.map(s => <option key={s}>{s}</option>)}</select></div>
+            <div style={fieldStyle}><label style={labelStyle}>Close Date</label><input type="date" style={inputStyle} value={t.closeDate} onChange={e => set("closeDate", e.target.value)} /></div>
+            <div style={fieldStyle}><label style={labelStyle}>Realised P&L ($)</label><input type="number" style={inputStyle} value={t.realizedPnl} onChange={e => set("realizedPnl", e.target.value)} placeholder="e.g. 268" step="0.01" /></div>
           </div>
         </div>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Post-trade notes / lessons learned</label>
-          <textarea style={{ ...inputStyle, height: 70, resize: "vertical" }} value={t.notes} onChange={e => set("notes", e.target.value)} placeholder="e.g. Should have taken profit at 3x instead of holding..." />
-        </div>
-
+        <div style={fieldStyle}><label style={labelStyle}>Post-trade notes / lessons learned</label><textarea style={{ ...inputStyle, height: 70, resize: "vertical" }} value={t.notes} onChange={e => set("notes", e.target.value)} placeholder="e.g. Should have taken profit at 3x instead of holding..." /></div>
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <button onClick={submitTrade} style={btnPrimary}>{isEdit ? "Save Changes" : "Add Trade"}</button>
           <button onClick={() => setView(isEdit ? "log" : "dashboard")} style={btnSecondary}>Cancel</button>
